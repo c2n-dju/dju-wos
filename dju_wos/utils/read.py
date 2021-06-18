@@ -41,6 +41,7 @@ for (l1, l2) in zip(sorted(c1), sorted(c2)):
 
 from functools import reduce
 
+
 class CiwReader(object):
 
     """
@@ -51,7 +52,7 @@ class CiwReader(object):
         if i < 0:
             self._error(iline, line, 'Usage Count (Last 180 Days)FN not found')
         self.header_residu = line[0:i]
-        self.header_content = line[i+3:-1]
+        self.header_content = line[(i + 3):-1]
         self._read_line = self._read_vr
         # print('header_content = ' + self.header_content)
 
@@ -75,7 +76,8 @@ class CiwReader(object):
 
     def _read_next(self, iline, line):
         if line[0] == ' ':
-            if line[0:3] != '   ': # voir si la suite de clé à 3 caractères convient
+            if line[0:3] != '   ':
+                # voir si la suite de clé à 3 caractères convient
                 self._error(iline, line, 'bad next line')
             self._publi[-1] += line[3:]
         elif line == 'ER\n':
@@ -86,8 +88,9 @@ class CiwReader(object):
             self._read_line = self._read_pt
         else:
             i = line.index(' ')
+            ip1 = i + 1
             key = line[:i]
-            if line[i+1] == ' ':
+            if line[ip1] == ' ':
                 if key == 'FU':
                     pass
                 elif key == 'RI':
@@ -96,7 +99,7 @@ class CiwReader(object):
                     self._error(iline, line, "double white after key")
             self._publi[-1] = self._publi[-1][:-1]
             self._publi.append(key)
-            self._publi.append(line[i+1:])
+            self._publi.append(line[ip1:])
 
     def __init__(self, filename):
         self.publis = []
@@ -113,23 +116,34 @@ class CiwReader(object):
         if line != '':
             print('reste : ' + line)
         f.close()
+        if not self.is_ok():
+            raise Exception('Error: ' + filename + ' is not OK!')
+        else:
+            print('OK ' + filename)
+
     def _reconstruct_value(self, value):
         return '\n   '.join(value.split('\n')) + '\n'
 
     def _reconstruct_publi(self, publi):
         assert len(publi) % 2 == 0
         kvs = zip(publi[0::2], publi[1::2])
-        r = reduce(lambda x, kv: x+kv[0]+' '+self._reconstruct_value(kv[1]), kvs, "")
+        r = reduce(lambda x, kv: x + kv[0] + ' ' + self._reconstruct_value(kv[1]),
+                   kvs,
+                   "")
         return r + 'ER\n\n'
 
     def _error(self, iline, line, message):
-        raise Exception('Error: ' + message + ' in line ' + str(iline) + ": \"" + line + "\"")
+        raise Exception('Error: ' + message
+                        + ' in line ' + str(iline)
+                        + ": \"" + line + "\"")
 
     def reconstruct(self):
         ret = self.header_residu
         ret += 'FN ' + self.header_content + '\n'
         ret += 'VR ' + self.version + '\n'
-        ret += reduce(lambda x, p: x+self._reconstruct_publi(p), self.publis, "")
+        ret += reduce(lambda x, p: x + self._reconstruct_publi(p),
+                      self.publis,
+                      "")
         ret += 'EF'
         return ret
 
@@ -158,7 +172,7 @@ class Ciw(object):
 def keys(publi):
     ks = publi[0::2]
     ret = set(ks)
-    assert len(ks) == len(ret) # sinon il y a des doublons C'est le cas avec RID
+    assert len(ks) == len(ret)  # sinon il y a des doublons C'est le cas avec RID
     return ret
 
 
@@ -182,8 +196,8 @@ def publi_all_keys(publi):
 def publis_all_keys(ciw):
     return reduce(lambda s, publi: set.union(s, publi_all_keys(publi)), ciw.publis, set())
 
-"""
 
+"""
 PT Publication Type (conference, book, journal, book in series, or patent) : J S B -> existe toujours
 UT Unique Article Identifier : WOS:000269196400018 -> existe toujours
 DT Document Type : 'Article' 'Book Chapter' 'Correction' 'Editorial Material' 'Meeting Abstract' 'Proceeding Paper' 'Review'
@@ -261,33 +275,37 @@ FN File Name (inexistant)
 
 """
 
+
 def publis_by_keys(ciw):
     ret = dict()
     ipub = -1
     for publi in ciw.publis:
         ipub += 1
         for k, v in zip(publi[0::2], publi[1::2]):
-            if not k in ret:
+            if k not in ret:
                 ret[k] = []
             ret[k].append((ipub, v))
     return ret
 
+
 def publis_by_PT(pbk):
     ret = dict()
     for i, v in pbk['PT']:
-        if not v in ret:
+        if v not in ret:
             ret[v] = []
         ret[v].append(i)
     return ret
+
 
 def publis_by_DT(pbk):
     ret = dict()
     for i, vs in pbk['DT']:
         for v in vs.split('; '):
-            if not v in ret:
+            if v not in ret:
                 ret[v] = []
             ret[v].append(i)
     return ret
+
 
 def publis_by_OI(pbk):
     ret = dict()
@@ -300,19 +318,21 @@ def publis_by_OI(pbk):
             if len(lv) != 2:
                 print('BAD ' + str(i) + ':' + v)
             vv = lv[1]
-            if not vv in ret:
+            if vv not in ret:
                 ret[vv] = []
             ret[vv].append((lv[0].replace('\n', ' '), i))
     return ret
+
 
 def publis_by_author(pbk, AUorAF):
     ret = dict()
     for i, v in pbk[AUorAF]:
         for au in v.split('\n'):
-            if not au in ret:
+            if au not in ret:
                 ret[au] = []
             ret[au].append(i)
     return ret
+
 
 def publis_by_author_labo(pbk):
     ret1 = dict()
@@ -323,21 +343,21 @@ def publis_by_author_labo(pbk):
                 aus = ciw.publis[i][ciw.publis[i].index('AF') + 1]
                 labo = al
                 for a in aus.split('\n'):
-                    if not a in ret1:
+                    if a not in ret1:
                         ret1[a] = []
-                    if not labo in ret2:
+                    if labo not in ret2:
                         ret2[labo] = []
                     ret1[a].append((i, labo))
                     ret2[labo].append((i, a))
             else:
                 ic = al.index(']')
-                if al[ic+1] != " ":
+                if al[ic + 1] != " ":
                     raise Exception('publi ' + str(i) + ', C1 = ' + al)
-                labo = al[ic+2:]
+                labo = al[(ic + 2):]
                 for a in al[1:ic].split('; '):
-                    if not a in ret1:
+                    if a not in ret1:
                         ret1[a] = []
-                    if not labo in ret2:
+                    if labo not in ret2:
                         ret2[labo] = []
                     ret1[a].append((i, labo))
                     ret2[labo].append((i, a))
@@ -347,27 +367,30 @@ def publis_by_author_labo(pbk):
 def publis_by_journal(pbk, JIorJ9):
     ret = dict()
     for i, v in pbk[JIorJ9]:
-        if not v in ret:
+        if v not in ret:
             ret[v] = []
         ret[v].append(i)
     return ret
 
+
 def publis_by_wos(pbk):
     ret = dict()
     for i, v in pbk['UT']:
-        if not v in ret:
+        if v not in ret:
             ret[v] = []
         ret[v].append(i)
     return ret
+
 
 def maxsizes(ciw, keys):
     ret = {}
     for publi in ciw.publis:
         for k, v in zip(publi[0::2], publi[1::2]):
             l = len(v)
-            if (not k in ret) or (ret[k][0] < l):
+            if (k not in ret) or (ret[k][0] < l):
                 ret[k] = (l, v)
     return ret
+
 
 """
  http://images.webofknowledge.com/WOK46/help/WOS/h_fieldtags.html
@@ -466,48 +489,50 @@ wos_tags_dict = {}
 for (k, v) in map(lambda x: (x[2:4], x[5:]), wos_tags.strip('\n').split('\n')):
     wos_tags_dict[k] = v
 
-ciws = []
 
-for f in ("marcoussis_1.ciw",
-          "marcoussis_2013.ciw",
-          "marcoussis_2.ciw",
-          "marcoussis_3.ciw",
-          "marcoussis_4.ciw",
-          "marcoussis_5.ciw",
-          "marcoussis_6.ciw",
-          "marcoussis_7.ciw",
-          "marcoussis_8.ciw",
-          "marcoussis_2013.ciw",
-          "2013-2014.ciw",
-          "c2n_orsay.ciw",
-          "c2n_special.ciw",
-          "el-fond-00501-001000.ciw",
-          "el-fond-00001-00500.ciw",
-          "el-fond-00501-001092.ciw",
-          "ief_orsay_00501-00622.ciw",
-          "ief_orsay_00001-00500.ciw",
-          "marcoussis-00001-00500.ciw",
-          "marcoussis-01001-01500.ciw",
-          "marcoussis-00501-01000.ciw",
-          "marcoussis-01501-02000.ciw",
-          "marcoussis-02501-03000.ciw",
-          "marcoussis-02001-02500.ciw",
-          "marcoussis-03001-03500.ciw",
-          "marcoussis-03501-04000.ciw",
-          "marcoussis-04001-04500.ciw",
-          "marcoussis-05001-05123.ciw",
-          "marcoussis-04501-05000.ciw",
-          "oo-ief_orsay_00001-00025.ciw",
-          "oo-umr_8622-00001-00002.ciw",
-          "umr_8622-00001-00500.ciw",
-          "umr8622-00001-00192.ciw",
-          "umr_8622-00501-01000.ciw",
-          "umr_8622-01001-01387.ciw",
-         ):
+lf = ("marcoussis_1.ciw",
+      "marcoussis_2013.ciw",
+      "marcoussis_2.ciw",
+      "marcoussis_3.ciw",
+      "marcoussis_4.ciw",
+      "marcoussis_5.ciw",
+      "marcoussis_6.ciw",
+      "marcoussis_7.ciw",
+      "marcoussis_8.ciw",
+      "marcoussis_2013.ciw",
+      "2013-2014.ciw",
+      "c2n_orsay.ciw",
+      "c2n_special.ciw",
+      "el-fond-00501-001000.ciw",
+      "el-fond-00001-00500.ciw",
+      "el-fond-00501-001092.ciw",
+      "ief_orsay_00501-00622.ciw",
+      "ief_orsay_00001-00500.ciw",
+      "marcoussis-00001-00500.ciw",
+      "marcoussis-01001-01500.ciw",
+      "marcoussis-00501-01000.ciw",
+      "marcoussis-01501-02000.ciw",
+      "marcoussis-02501-03000.ciw",
+      "marcoussis-02001-02500.ciw",
+      "marcoussis-03001-03500.ciw",
+      "marcoussis-03501-04000.ciw",
+      "marcoussis-04001-04500.ciw",
+      "marcoussis-05001-05123.ciw",
+      "marcoussis-04501-05000.ciw",
+      "oo-ief_orsay_00001-00025.ciw",
+      "oo-umr_8622-00001-00002.ciw",
+      "umr_8622-00001-00500.ciw",
+      "umr8622-00001-00192.ciw",
+      "umr_8622-00501-01000.ciw",
+      "umr_8622-01001-01387.ciw",
+      )
+
+ciws = []
+for f in ("2021-06-16-c2n.ciw",):
     filename = '../data/' + f
-    ciw = CiwReader(filename)
-    print(str(ciw.is_ok()) + ' ' + filename)
-    ciws.append(ciw)
+    ciwr = CiwReader(filename)
+    print(str(ciwr.is_ok()) + ' ' + filename)
+    ciws.append(ciwr)
 
 ciw = Ciw(ciws)
 
@@ -547,7 +572,7 @@ for k in all_keys:
         print(k + ' ' + '--- UNKNOWN ---')
 
 pbk = publis_by_keys(ciw)
-pbPT = publis_by_PT(pbk) # S J B
+pbPT = publis_by_PT(pbk)  # S J B
 pbDT = publis_by_DT(pbk)
 
 dts = sorted(pbDT.keys())
@@ -564,7 +589,8 @@ if dts != ['Article',
            'Note',
            'Proceedings Paper',
            'Reprint',
-           'Review',]:
+           'Review',
+           ]:
     print()
     print('!! nouveaux DTs !!')
     print(sorted(pbDT.keys()))
@@ -596,7 +622,7 @@ for oi in poi.keys():
     names = []
     for v in poi[oi]:
         name = v[0]
-        if not name in names:
+        if name not in names:
             names.append(name)
     names_from_oi[oi] = names
 
@@ -613,9 +639,9 @@ oi_from_name = dict()
 for oi in poi.keys():
     for v in poi[oi]:
         name = v[0]
-        if not name in oi_from_name:
+        if name not in oi_from_name:
             oi_from_name[name] = []
-        if not oi in oi_from_name[name]:
+        if oi not in oi_from_name[name]:
             oi_from_name[name].append(oi)
 
 oi_authors = list(oi_from_name.keys())
